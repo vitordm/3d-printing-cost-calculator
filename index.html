@@ -470,9 +470,9 @@
           extras += Number.parseFloat(input.value.replace(",", ".")) || 0;
         });
 
-        document.querySelector(".result-extracosts").classList.remove("d-none");
+        document.querySelector(".result-extracosts").forEach(el => el.classList.remove("d-none"));
       } else {
-        document.querySelector(".result-extracosts").classList.add("d-none");
+        document.querySelector(".result-extracosts").forEach(el => el.classList.add("d-none"));
       }
 
       const totalCost =
