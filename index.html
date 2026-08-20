@@ -188,7 +188,7 @@
               <label for="energyPrice" class="form-label">Energia elétrica</label>
               <div class="input-group">
                 <span class="input-group-text">R$</span>
-                <input id="energyPrice" type="number" class="form-control" min="0" step=".001" placeholder="1">
+                <input id="energyPrice" type="number" class="form-control" min="0" step=".0001" placeholder="1">
                 <span class="input-group-text">/ kWh</span>
               </div>
             </div>
@@ -297,16 +297,16 @@
                   <div class="cost-row d-flex justify-content-between">
                     <span>Energia</span><strong id="energyCost">R$ 0,00</strong>
                   </div>
-                  <div class="cost-row d-flex justify-content-between">
+                  <div class="cost-row d-flex justify-content-between result-extracosts">
                     <span>Depreciação</span><strong id="depreciationCost">R$ 0,00</strong>
                   </div>
-                  <div class="cost-row d-flex justify-content-between">
+                  <div class="cost-row d-flex justify-content-between result-extracosts">
                     <span>Manutenção</span><strong id="maintenanceCost">R$ 0,00</strong>
                   </div>
-                  <div class="cost-row d-flex justify-content-between">
+                  <div class="cost-row d-flex justify-content-between result-extracosts">
                     <span>Mão de obra</span><strong id="laborCost">R$ 0,00</strong>
                   </div>
-                  <div class="cost-row d-flex justify-content-between">
+                  <div class="cost-row d-flex justify-content-between result-extracosts">
                     <span>Custos adicionais</span><strong id="extrasCost">R$ 0,00</strong>
                   </div>
                   <div class="cost-row d-flex justify-content-between fw-bold">
@@ -469,6 +469,10 @@
         document.querySelectorAll(".cost-value").forEach(input => {
           extras += Number.parseFloat(input.value.replace(",", ".")) || 0;
         });
+
+        document.querySelector(".result-extracosts").classList.remove("d-none");
+      } else {
+        document.querySelector(".result-extracosts").classList.add("d-none");
       }
 
       const totalCost =
