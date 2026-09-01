@@ -182,7 +182,8 @@ jobs:
             exit 1
           fi
           git commit -m "chore: cadastrar impressora ${{ inputs.model }}"
-          git push --set-upstream origin "$branch"
+          git pull origin "$branch" --rebase || true
+          git push --set-upstream origin "$branch" --force
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Abrir Pull Request
