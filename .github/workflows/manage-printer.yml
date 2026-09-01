@@ -111,7 +111,7 @@ jobs:
           brand = required("BRAND")
           model = required("MODEL")
           description = required("DESCRIPTION")
-          printer_id = slug(f"{name}-{model}")
+          printer_id = slug(f"{brand}-{model}")
 
           existing_id = os.environ["EXISTING_ID"].strip()
           if operation == "update":
