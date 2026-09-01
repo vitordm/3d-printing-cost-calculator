@@ -1,0 +1,16 @@
+[
+  {
+    "id": "bambu-lab-a1-a1",
+    "type": "printer",
+    "name": "Bambu Lab A1",
+    "brand": "Bambu Lab",
+    "model": "A1",
+    "description": "Bambu Lab A1 Printer",
+    "energyConsumption": {
+      "PLA": 100.0,
+      "PETG": 120.0,
+      "TPU": 120.0,
+      "ABS": 200.0
+    }
+  }
+]
