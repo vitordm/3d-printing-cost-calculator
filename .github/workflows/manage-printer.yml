@@ -1,0 +1,197 @@
+name: Cadastrar impressora 3D
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Operação desejada"
+        required: true
+        type: choice
+        options:
+          - create
+          - update
+      existing_id:
+        description: "ID atual do cadastro (obrigatório ao atualizar)"
+        required: false
+        type: string
+      name:
+        description: "Nome da impressora"
+        required: true
+        type: string
+      brand:
+        description: "Marca"
+        required: true
+        type: string
+      model:
+        description: "Modelo"
+        required: true
+        type: string
+      description:
+        description: "Descrição"
+        required: true
+        type: string
+      pla:
+        description: "Consumo médio com PLA (W)"
+        required: true
+        type: number
+      petg:
+        description: "Consumo médio com PETG (W)"
+        required: true
+        type: number
+      tpu:
+        description: "Consumo médio com TPU (W)"
+        required: true
+        type: number
+      abs:
+        description: "Consumo médio com ABS (W)"
+        required: true
+        type: number
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-printer-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gerar e validar cadastro
+        env:
+          OPERATION: ${{ inputs.operation }}
+          EXISTING_ID: ${{ inputs.existing_id }}
+          NAME: ${{ inputs.name }}
+          BRAND: ${{ inputs.brand }}
+          MODEL: ${{ inputs.model }}
+          DESCRIPTION: ${{ inputs.description }}
+          PLA: ${{ inputs.pla }}
+          PETG: ${{ inputs.petg }}
+          TPU: ${{ inputs.tpu }}
+          ABS: ${{ inputs.abs }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import unicodedata
+          from pathlib import Path
+
+          def required(name):
+              value = os.environ[name].strip()
+              if not value:
+                  raise ValueError(f"{name} é obrigatório")
+              return value
+
+          def non_negative_number(name):
+              value = float(os.environ[name])
+              if value < 0:
+                  raise ValueError(f"{name} não pode ser negativo")
+              return value
+
+          def slug(value):
+              normalized = unicodedata.normalize("NFKD", value)
+              without_accents = "".join(
+                  char for char in normalized if not unicodedata.combining(char)
+              )
+              result = re.sub(r"[^a-z0-9]+", "-", without_accents.lower()).strip("-")
+              if not result:
+                  raise ValueError("Não foi possível gerar um ID válido")
+              return result
+
+          operation = os.environ["OPERATION"]
+          if operation not in {"create", "update"}:
+              raise ValueError("Operação inválida")
+
+          name = required("NAME")
+          brand = required("BRAND")
+          model = required("MODEL")
+          description = required("DESCRIPTION")
+          printer_id = slug(f"{name}-{model}")
+
+          existing_id = os.environ["EXISTING_ID"].strip()
+          if operation == "update":
+              if not existing_id:
+                  raise ValueError("EXISTING_ID é obrigatório ao atualizar")
+              if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", existing_id):
+                  raise ValueError("EXISTING_ID contém caracteres inválidos")
+              source = Path("printers") / f"{existing_id}.json"
+              if not source.is_file():
+                  raise FileNotFoundError(f"Cadastro não encontrado: {source}")
+          else:
+              source = None
+
+          target = Path("printers") / f"{printer_id}.json"
+          if operation == "create" and target.exists():
+              raise FileExistsError(f"Cadastro já existe: {target}")
+          if operation == "update" and source != target and target.exists():
+              raise FileExistsError(
+                  f"O novo ID já pertence a outro cadastro: {target}"
+              )
+
+          data = {
+              "id": printer_id,
+              "type": "printer",
+              "name": name,
+              "brand": brand,
+              "model": model,
+              "description": description,
+              "energyConsumption": {
+                  "PLA": non_negative_number("PLA"),
+                  "PETG": non_negative_number("PETG"),
+                  "TPU": non_negative_number("TPU"),
+                  "ABS": non_negative_number("ABS"),
+              },
+          }
+
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+
+          if source and source != target:
+              source.unlink()
+
+          printer_files = sorted(
+              path for path in Path("printers").glob("*.json")
+              if path.name != "printers.json"
+          )
+          printers = [json.loads(path.read_text()) for path in printer_files]
+          Path("printers/printers.json").write_text(
+              json.dumps(printers, ensure_ascii=False, indent=2) + "\n"
+          )
+
+          json.loads(target.read_text())
+          json.loads(Path("printers/printers.json").read_text())
+          print(f"Cadastro validado: {target}")
+          print(f"ID gerado: {printer_id}")
+          PY
+
+      - name: Criar branch e commit
+        id: commit
+        run: |
+          branch="printer/${{ inputs.operation }}-${{ github.run_id }}"
+          git switch -c "$branch"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add printers/
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração foi gerada."
+            exit 1
+          fi
+          git commit -m "chore: cadastrar impressora ${{ inputs.model }}"
+          git push --set-upstream origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Abrir Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.commit.outputs.branch }}
+        run: |
+          gh pr create \
+            --base "${{ github.event.repository.default_branch }}" \
+            --head "$BRANCH" \
+            --title "Cadastro de impressora: ${{ inputs.name }} ${{ inputs.model }}" \
+            --body "Cadastro gerado pela Action de impressoras 3D. Os consumos informados representam médias em watts (W) para PLA, PETG e ABS."
