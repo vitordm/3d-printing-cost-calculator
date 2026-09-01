@@ -72,8 +72,9 @@ async function loadPrinters() {
 
     printers.forEach(printer => {
       const option = document.createElement("option");
+      const textContent = (printer.name?.trim() || `${printer.brand || ""} ${printer.model || ""}`).trim();
       option.value = printer.id;
-      option.textContent = `${printer.name} ${printer.model || ""}`.trim();
+      option.textContent = textContent;
       printerSelect.appendChild(option);
     });
 
